@@ -1,0 +1,32 @@
+﻿Entrance
+Name: Entrance
+Description: You find yourself between double doors that lead into Spelkollektivet, the indie game developers house. The way in is south into the lobby.
+Directions:
+    South: Lobby
+
+Lobby
+Name: Lobby
+Description: The lobby is home to a few couches, a reception counter, and a computer with a VR headset plugged in. Shelves with dozens of shoes lean against the door. The paths forward lead south into the round Room, west to the dining Room, or back to the entrance doorway to the north.
+Directions:
+    North: Entrance
+    SouthEast: Reception
+    South: RoundRoom
+    West: DiningRoom
+
+Reception
+Name: Reception
+Description: You are in the reception office that overlooks the lobby through a big window. This is where James (the founder) and Chris (the CEO) work.
+Directions:
+    NorthWest: Lobby
+
+RoundRoom
+Name: Round room
+Description: You enter a spacious room of octogonal shape, somewhat incorrectly nicknamed the Round room. Couches are arranged into a makeshift theater, facing a big TV at one end. On the other, a waterfall wall decorates the space with pleasant sounds of dripping water. The only way out is back north to the Lobby.
+Directions:
+    North: Lobby
+
+DiningRoom
+Name: Dining room
+Description: Rows of tables fill most of the dining room, a necessity to accomodate the 30+ game developers who live here. You may continue to the dishwashing room to the west or return to the Lobby.
+Directions:
+    East: Lobby

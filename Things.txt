@@ -1,0 +1,14 @@
+﻿Suitcase
+Name: suitcase
+Description: It's your suitcase! You better leave it in your room as it's quite heavy.
+StartingLocation: Inventory
+
+James
+Name: James
+Description: It's James Newnorth, the founder of Spelkollektivet.
+StartingLocation: Lobby
+
+Plate
+Name: plate
+Description: It's one of the fine Ikea plates used during meals. For some reason they keep disappearing.
+StartingLocation: DiningRoom
