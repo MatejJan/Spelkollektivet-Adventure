@@ -12,6 +12,7 @@ Directions:
     SouthEast: Reception
     South: RoundRoom
     West: DiningRoom
+    East: NorthWingEntrance
 
 Reception
 Name: Reception
@@ -30,3 +31,58 @@ Name: Dining room
 Description: Rows of tables fill most of the dining room, a necessity to accomodate the 30+ game developers who live here. You may continue to the dishwashing room to the west or return to the Lobby.
 Directions:
     East: Lobby
+
+NorthWingEntrance
+Name: North wing entrance
+Description: You are at the start of a hallway that leads to the rooms of the north wing. Path further east leads to the south wing and there is a bathroom with a shower around the corner to the northwest.
+Directions:
+    West: Lobby
+    North: NorthWing
+    NorthWest: NorthWingBathroom
+    East: SouthWingEntrance
+
+NorthWing
+Name: North wing
+Description: The north wing is arguably where the cool homies live — you're lucky to be one of them. Your room is the one on the west side.
+Directions:
+    South: NorthWingEntrance
+    West: YourRoom
+
+YourRoom
+Name: Your room
+Description: You enter your room that greets you with essential Ikea furniture. It won't be long until this place will feel like home.
+Directions:
+    East: NorthWing
+
+NorthWingBathroom
+Name: North wing bathroom
+Description: Bathrooms in Sweden, or at least at Spelkollektivet, are often simply rooms with a shower placed in a corner and a drain in the floor. A mop at the side serves for cleaning the water from the floor afterwards.
+Directions:
+    SouthEast: NorthWingEntrance
+
+SouthWingEntrance
+Name: South wing entrance
+Description: At the east end of the building, the hallway turns south towards another cluster of rooms. The stairs lead down into the dungeon as the inhabitants of the basement offices lovingly call their working environment.
+Directions:
+    West: NorthWingEntrance
+    South: SouthWing
+    Down: BasementLobby
+
+SouthWing
+Name: South wing
+Description: You reach a dead end, surrounded by homies' rooms on all sides. Since your room is in the north wing, you don't have much reason to be here.
+Directions:
+    North: SouthWingEntrance
+
+BasementLobby
+Name: Basement lobby.
+Description: You enter a sizeable room without any windows. A few couches serve as a makeshift hangout space, although nobody is actually hanging out. You hear distant memories of ping pong balls echoing in the air.
+Directions:
+    South: LoudOffice
+    Up: SouthWingEntrance
+
+LoudOffice
+Name: The loud office
+Description: A long office space extends south with small windows helping the ceiling lights with illuminating the many desks. The place is nicknamed the loud office since conversations between inhabitants are allowed. There is even a green screen with a homie livestreaming from his computer. You feel like you'll fit right in.
+Directions:
+    North: BasementLobby

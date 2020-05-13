@@ -12,3 +12,53 @@ Plate
 Name: plate
 Description: It's one of the fine Ikea plates used during meals. For some reason they keep disappearing.
 StartingLocation: DiningRoom
+
+Computer
+Name: computer
+Description: It's your trusty computer! The question is, where will you find a desk for it?
+StartingLocation: Nowhere
+
+Checklist
+Name: checklist
+Description: It's a mental list of things you're supposed to do today.
+StartingLocation: Inventory
+
+EmptyDesk
+Name: empty desk
+Description: It's an empty desk. If you set down your computer, it can be yours!
+StartingLocation: LoudOffice
+
+YourDesk
+Name: your desk
+Description: As the newest resident of the loud office, you've claimed this desk as your working environment.
+StartingLocation: Nowhere
+
+BathroomSign
+Name: sign
+Description: The sign informs you that you should mop the floor and empty the drain of any hair after you're done taking a shower.
+StartingLocation: NorthWingBathroom
+
+Mop
+Name: mop
+Description: It's a mop, great for being a good homie and cleaning the water from the floor.
+StartingLocation: NorthWingBathroom
+
+Hair
+Name: hair
+Description: It's an ungodly cluster of hair that would scare any homie coming to use the bathroom after you.
+StartingLocation: Nowhere
+
+Puddle
+Name: puddle of water
+Description: There's water all over the floor. You better mop it clean.
+StartingLocation: Nowhere
+
+Shower
+Name: shower
+Description: The shower is simply mounted to one of the walls of the bathroom. A crude system, but it works.
+StartingLocation: NorthWingBathroom
+
+TrashBin
+Name: trash bin
+Description: It's a small trash bin, good for disposing of hairballs.
+StartingLocation: NorthWingBathroom
