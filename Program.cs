@@ -125,7 +125,7 @@ namespace SpelkollektivetAdventure
         // Current state
 
         static Location CurrentLocation = Location.Entrance;
-        static Dictionary<Thing, Location> ThingLocations = new Dictionary<Thing, Location>();
+        static Dictionary<Thing, Location> ThingLocation = new Dictionary<Thing, Location>();
         static Dictionary<Location, bool> LocationSeen = new Dictionary<Location, bool>();
         static Dictionary<Goal, bool> GoalCompleted = new Dictionary<Goal, bool>();
         static bool SleepHintGiven = false;
@@ -323,7 +323,7 @@ namespace SpelkollektivetAdventure
             // Set all things to their starting locations.
             foreach (KeyValuePair<Thing, ThingData> thingEntry in ThingsData)
             {
-                ThingLocations[thingEntry.Key] = thingEntry.Value.StartingLocation;
+                ThingLocation[thingEntry.Key] = thingEntry.Value.StartingLocation;
             }
         }
 
@@ -411,7 +411,7 @@ namespace SpelkollektivetAdventure
         /// </summary>
         static IEnumerable<Thing> GetThingsAtLocation(Location location)
         {
-            return ThingLocations.Keys.Where(thing => ThingLocations[thing] == location);
+            return ThingLocation.Keys.Where(thing => ThingLocation[thing] == location);
 
             /* Below code kept to show students how much longer an imperative filter code is.
 
@@ -1158,7 +1158,7 @@ namespace SpelkollektivetAdventure
         /// </summary>
         static bool ThingAt(Thing thing, Location location)
         {
-            return ThingLocations[thing] == location;
+            return ThingLocation[thing] == location;
         }
 
         /// <summary>
@@ -1182,7 +1182,7 @@ namespace SpelkollektivetAdventure
         /// </summary>
         static bool HaveThing(Thing thing)
         {
-            return ThingLocations[thing] == Location.Inventory;
+            return ThingLocation[thing] == Location.Inventory;
         }
 
         // Action helpers
@@ -1201,7 +1201,7 @@ namespace SpelkollektivetAdventure
         /// </summary>
         static void MoveThing(Thing thing, Location location)
         {
-            ThingLocations[thing] = location;
+            ThingLocation[thing] = location;
         }
 
         /// <summary>
@@ -1211,8 +1211,8 @@ namespace SpelkollektivetAdventure
         /// <param name="thing"></param>
         static void SwapThings(Thing thing1, Thing thing2)
         {
-            Location location1 = ThingLocations[thing1];
-            Location location2 = ThingLocations[thing2];
+            Location location1 = ThingLocation[thing1];
+            Location location2 = ThingLocation[thing2];
 
             MoveThing(thing1, location2);
             MoveThing(thing2, location1);
@@ -1287,7 +1287,7 @@ namespace SpelkollektivetAdventure
             }
 
             // Place the computer at suitcase's location.
-            MoveThing(Thing.Computer, ThingLocations[Thing.Suitcase]);
+            MoveThing(Thing.Computer, ThingLocation[Thing.Suitcase]);
 
             Reply("You open the suitcase and see your computer in it.");
         }
