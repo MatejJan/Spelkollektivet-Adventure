@@ -27,7 +27,9 @@ namespace SpelkollektivetAdventure
         SouthWingEntrance,
         SouthWing,
         BasementLobby,
-        LoudOffice
+        LoudOffice,
+        Scullery,
+        HomiesKitchen
     }
 
     enum Thing
@@ -36,7 +38,9 @@ namespace SpelkollektivetAdventure
         All,
         Suitcase,
         James,
-        Plate,
+        CleanPlate,
+        DirtyPlate,
+        RinsedPlate,
         Computer,
         Checklist,
         EmptyDesk,
@@ -46,7 +50,8 @@ namespace SpelkollektivetAdventure
         Hair,
         Puddle,
         Shower,
-        TrashBin
+        TrashBin,
+        Meatballs
     }
 
     enum Direction
@@ -67,7 +72,7 @@ namespace SpelkollektivetAdventure
     {
         SuitcaseInRoom,
         ComputerInOffice,
-        LunchEaten,
+        DinnerEaten,
         ShowerTaken
     }
 
@@ -113,14 +118,17 @@ namespace SpelkollektivetAdventure
 
         static Dictionary<string, Thing> ThingsByName = new Dictionary<string, Thing>();
         static Thing[] ThingsYouCanTalkTo = { Thing.James };
-        static Thing[] ThingsYouCanGet = { Thing.Suitcase, Thing.Plate, Thing.Computer, Thing.Mop, Thing.Hair };
+        static Thing[] ThingsYouCanGet = { Thing.Suitcase, Thing.CleanPlate, Thing.DirtyPlate, Thing.RinsedPlate, Thing.Computer, Thing.Mop, Thing.Hair, Thing.Meatballs };
         static Thing[] ThingsYouCanRead = { Thing.Checklist, Thing.BathroomSign };
+        static Thing[] Plates = { Thing.DirtyPlate, Thing.CleanPlate, Thing.RinsedPlate };
 
         // Current state
 
         static Location CurrentLocation = Location.Entrance;
         static Dictionary<Thing, Location> ThingLocations = new Dictionary<Thing, Location>();
+        static Dictionary<Location, bool> LocationSeen = new Dictionary<Location, bool>();
         static Dictionary<Goal, bool> GoalCompleted = new Dictionary<Goal, bool>();
+        static bool SleepHintGiven = false;
 
         // Helper variables
 
@@ -142,6 +150,7 @@ namespace SpelkollektivetAdventure
             ReadThingsData();
             InitializeVocabularyHelpers();
             InitializeThingsState();
+            InitializeSeenLocations();
             InitializeGoals();
 
             // Display intro.
@@ -155,7 +164,7 @@ namespace SpelkollektivetAdventure
 
             Console.ReadKey();
 
-            DisplayLocation();
+            DisplayLocation(false);
 
             // Start the main interaction loop.
             while (!ShouldQuit)
@@ -315,6 +324,15 @@ namespace SpelkollektivetAdventure
             foreach (KeyValuePair<Thing, ThingData> thingEntry in ThingsData)
             {
                 ThingLocations[thingEntry.Key] = thingEntry.Value.StartingLocation;
+            }
+        }
+
+        static void InitializeSeenLocations()
+        {
+            // Set all locations as not visited.
+            foreach (Location location in Enum.GetValues(typeof(Location)))
+            {
+                LocationSeen[location] = false;
             }
         }
 
@@ -536,7 +554,7 @@ namespace SpelkollektivetAdventure
                     HandleMovement(Direction.Up);
                     break;
 
-                // Common commands
+                // Main commands
 
                 case "l":
                 case "look":
@@ -585,6 +603,18 @@ namespace SpelkollektivetAdventure
                     MopPuddle();
                     break;
 
+                case "eat":
+                    HandleEat(words, things);
+                    break;
+
+                case "sleep":
+                    Sleep();
+                    break;
+
+                case "rinse":
+                    HandleRinse(words, things);
+                    break;
+
                 // Special commands
 
                 case "checklist":
@@ -621,7 +651,7 @@ namespace SpelkollektivetAdventure
             CurrentLocation = currentLocationData.Directions[direction];
 
             // Display the new location's description.
-            DisplayLocation();
+            DisplayLocation(false);
         }
 
         static void HandleLook(string[] words, List<Thing> things)
@@ -629,7 +659,7 @@ namespace SpelkollektivetAdventure
             if (words.Length == 1)
             {
                 // This is the simple look command which just outputs the location description again.
-                DisplayLocation();
+                DisplayLocation(true);
                 return;
             }
 
@@ -644,7 +674,7 @@ namespace SpelkollektivetAdventure
             foreach (Thing thing in things)
             {
                 // Make sure the thing is present.
-                if (!ThingIsHere(thing))
+                if (!ThingAvailable(thing))
                 {
                     Reply($"{Capitalize(GetName(thing))} is not here.");
                     continue;
@@ -748,14 +778,7 @@ namespace SpelkollektivetAdventure
                     return;
                 }
 
-                // Move the things to your inventory.
-                foreach (Thing thing in availableThingsToGet)
-                {
-                    GetThing(thing);
-                }
-
-                Reply("OK.");
-                return;
+                things = new List<Thing>(availableThingsToGet);
             }
 
             // Make sure we understood what to get.
@@ -801,8 +824,8 @@ namespace SpelkollektivetAdventure
                 }
 
                 // Everything seems to be OK, take the thing.
-                GetThing(thing);
-                thingsPickedUp.Add(thing);
+                bool pickedUp = GetThing(thing);
+                if (pickedUp) thingsPickedUp.Add(thing);
             }
 
             // If nothing was picked up, we let the error messages speak for themselves.
@@ -839,7 +862,7 @@ namespace SpelkollektivetAdventure
             if (WordsIncludeEverythingSynonyms(words))
             {
                 // See if we have any things to drop.
-                Thing[] thingsInInventory = GetThingsAtLocation(Location.Inventory).ToArray();
+                IEnumerable<Thing> thingsInInventory = GetThingsAtLocation(Location.Inventory);
 
                 if (thingsInInventory.Count() == 0)
                 {
@@ -847,14 +870,15 @@ namespace SpelkollektivetAdventure
                     return;
                 }
 
-                // Drop all things.
-                foreach (Thing thing in thingsInInventory)
+                IEnumerable<Thing> thingsYouCanDrop = thingsInInventory.Intersect(ThingsYouCanGet);
+
+                if (thingsYouCanDrop.Count() == 0)
                 {
-                    DropThing(thing);
+                    Reply("You don't have anything you could drop.");
+                    return;
                 }
 
-                Reply("OK.");
-                return;
+                things = new List<Thing>(thingsYouCanDrop);
             }
 
             // Make sure we understood what to drop.
@@ -877,8 +901,8 @@ namespace SpelkollektivetAdventure
                 }
 
                 // Everything seems to be OK, drop the item.
-                DropThing(thing);
-                thingsDropped.Add(thing);
+                bool dropped = DropThing(thing);
+                if (dropped) thingsDropped.Add(thing);
             }
 
             // If nothing was dropped, we let the error messages speak for themselves.
@@ -939,6 +963,58 @@ namespace SpelkollektivetAdventure
             {
                 Reply("You should pick it up and throw it in the trash.");
             }
+            else if (things.Intersect(Plates).Count() > 0)
+            {
+                RinsePlate();
+            }
+            else
+            {
+                Reply("You can't clean that.");
+            }
+        }
+
+        static void HandleEat(string[] words, List<Thing> things)
+        {
+            // Handle edge cases.
+            if (words.Length == 1)
+            {
+                Eat();
+                return;
+            }
+
+            if (things.Count == 0)
+            {
+                Reply("I don't know which thing you want to eat.");
+                return;
+            }
+
+            if (things.Contains(Thing.Meatballs))
+            {
+                Eat();
+            }
+            else
+            {
+                Reply("You can't eat that.");
+            }
+        }
+
+        static void HandleRinse(string[] words, List<Thing> things)
+        {
+            // Handle edge cases.
+            if (words.Length == 1)
+            {
+                Reply("What do you want to rinse?");
+                return;
+            }
+
+            if (things.Intersect(Plates).Count() > 0)
+            {
+                RinsePlate();
+            }
+            else
+            {
+                Reply("You can't rinse that.");
+            }
         }
 
         #endregion
@@ -948,13 +1024,26 @@ namespace SpelkollektivetAdventure
         /// <summary>
         /// Displays everything the player needs to know about the location.
         /// </summary>
-        static void DisplayLocation()
+        static void DisplayLocation(bool forceShowDescription)
         {
             // Display current location description.
             LocationData currentLocationData = LocationsData[CurrentLocation];
 
             Console.Clear();
-            Print(currentLocationData.Description);
+
+            // If we've already visited this location, show just the name, unless we explicitely asked for the description.
+            if (LocationSeen[CurrentLocation] && !forceShowDescription)
+            {
+                Print($"{currentLocationData.Name}.");
+            }
+            else
+            {
+                Print(currentLocationData.Description);
+
+                // Mark that we've seen this location's description.
+                LocationSeen[CurrentLocation] = true;
+            }
+
             Print();
 
             // Display possible directions.
@@ -1011,7 +1100,7 @@ namespace SpelkollektivetAdventure
             {
                 { Goal.SuitcaseInRoom, "Drop suitcase in your room." },
                 { Goal.ComputerInOffice, "Find a desk and put your computer on it." },
-                { Goal.LunchEaten, "Eat lunch." },
+                { Goal.DinnerEaten, "Eat dinner." },
                 { Goal.ShowerTaken, "Take a shower." }
             };
 
@@ -1132,17 +1221,40 @@ namespace SpelkollektivetAdventure
         /// <summary>
         /// Places the thing into the inventory.
         /// </summary>
-        static void GetThing(Thing thing)
+        static bool GetThing(Thing thing)
         {
+            // Meatballs can't be taken without a plate.
+            if (thing == Thing.Meatballs && !(HaveThing(Thing.CleanPlate) || HaveThing(Thing.DirtyPlate)))
+            {
+                Reply("You should get a plate first.");
+                return false;
+            }
+
             MoveThing(thing, Location.Inventory);
+            return true;
         }
 
         /// <summary>
         /// Places the thing to the current location.
         /// </summary>
-        static void DropThing(Thing thing)
+        static bool DropThing(Thing thing)
         {
+            // Meatballs shouldn't be dropped.
+            if (thing == Thing.Meatballs)
+            {
+                Reply("You shouldn't be throwing food away!");
+                return false;
+            }
+
+            // Plate while having meatballs shouldn't be dropped.
+            if (Plates.Contains(thing) && HaveThing(Thing.Meatballs))
+            {
+                Reply("You still have meatballs to eat!");
+                return false;
+            }
+
             MoveThing(thing, CurrentLocation);
+            return true;
         }
 
         #endregion
@@ -1153,8 +1265,8 @@ namespace SpelkollektivetAdventure
         {
             if (ThingAt(Thing.James, Location.Lobby))
             {
-                Reply("James says \"Welcome to Spelkollektivet! You'll first want to get settled in. Your room is on the west side of the second part of the north wing.\"");
-                Reply("James points to the east and adds \"If you have any questions, I'll be in the reception.\"");
+                Reply("James says \"Welcome to Spelkollektivet! You'll first want to get settled in. Your room is on the west side of the north wing.\"");
+                Reply("James points to the east where the north wing starts. He adds \"If you have any questions, I'll be in the reception.\"");
                 Reply("James leaves southeast.");
 
                 MoveThing(Thing.James, Location.Reception);
@@ -1263,6 +1375,76 @@ namespace SpelkollektivetAdventure
             }
         }
 
+        static void Eat()
+        {
+            // Make sure we have meatballs.
+            if (!HaveThing(Thing.Meatballs))
+            {
+                Reply("You don't have anything to eat.");
+                return;
+            }
+
+            Reply("You eat the delicious meatballs and are immediately content with the decision of moving into this house. The food will be one of unexpected highlights of living here.");
+
+            MoveThing(Thing.Meatballs, Location.Nowhere);
+
+            GoalCompleted[Goal.DinnerEaten] = true;
+        }
+
+        static void RinsePlate()
+        {
+            // You have to be in a room with a sink to rinse dishes.
+            if (!new[] { Location.Scullery, Location.HomiesKitchen, Location.NorthWingBathroom }.Contains(CurrentLocation))
+            {
+                Reply("There is no sink here.");
+                return;
+            }
+
+            // See if we have a plate.
+            if (ThingAvailable(Thing.CleanPlate))
+            {
+                Reply("The plate is already clean.");
+                return;
+            }
+            else if (ThingAvailable(Thing.RinsedPlate))
+            {
+                Reply("The plate is already rinsed.");
+                return;
+            }
+            else if (!ThingAvailable(Thing.DirtyPlate))
+            {
+                Reply("You don't have a plate to rinse.");
+                return;
+            }
+
+            Reply("As a good future homie, you rinse the plate so that the dishwasher will have an easier time getting it super clean.");
+
+            // The plate is now rinsed.
+            SwapThings(Thing.DirtyPlate, Thing.RinsedPlate);
+
+            // We also need the word plate to refer to the rinsed plate now.
+            ThingsByName["plate"] = Thing.RinsedPlate;
+        }
+
+        static void Sleep()
+        {
+            // You have to be in your room to sleep.
+            if (CurrentLocation != Location.YourRoom)
+            {
+                Reply("Maybe try sleeping in your room?");
+                return;
+            }
+
+            // Make sure all the goals are completed.
+            if (!AllGoalsCompleted())
+            {
+                Reply("You still have things to do today. Look at your checklist!");
+                return;
+            }
+
+            EndGame();
+        }
+
         #endregion
 
         #region Game rules
@@ -1282,6 +1464,162 @@ namespace SpelkollektivetAdventure
                 // We also need the word desk to refer to your desk now.
                 ThingsByName["desk"] = Thing.YourDesk;
             }
+
+            // Getting meatballs dirties your plate.
+            if (HaveThing(Thing.Meatballs) && HaveThing(Thing.CleanPlate))
+            {
+                // The plate is now dirty.
+                SwapThings(Thing.CleanPlate, Thing.DirtyPlate);
+
+                // We also need the word plate to refer to the dirty plate now.
+                ThingsByName["plate"] = Thing.DirtyPlate;
+            }
+
+            // When you complete all goals, the game should tell you to go to sleep.
+            if (AllGoalsCompleted() && !SleepHintGiven)
+            {
+                Reply("Congratulations! You've completed all four goals. It's been a long day, so when you're ready to be evaluated, go to sleep in your room. Now is the chance for any last actions.");
+                SleepHintGiven = true;
+            }
+        }
+
+        static bool AllGoalsCompleted()
+        {
+            return GoalCompleted.All(goal => goal.Value);
+        }
+
+        static void EndGame()
+        {
+            Reply("Exhausted at the end of your first day, you doze off to sleep. You've completed all four goals, but … have you been a good homie at doing it?");
+
+            Console.ReadKey();
+
+            bool madeAnyMistakes = false;
+
+            // Judge the showering situation.
+            string hairFeedback;
+
+            // Did you mop the floor?
+            if (ThingAt(Thing.Puddle, Location.Nowhere))
+            {
+                Reply("You took a shower and you mopped the floor afterwards. Awesome!");
+
+                // Did you return the mop?
+                if (!ThingAt(Thing.Mop, Location.NorthWingBathroom))
+                {
+                    Reply("It would be nice if you also left the mop back in the bathroom for other homies to use afterwards.");
+                    madeAnyMistakes = true;
+                }
+
+                // Did you get the hair?
+                if (ThingAt(Thing.Hair, Location.NorthWingBathroom))
+                {
+                    if (madeAnyMistakes)
+                    {
+                        hairFeedback = "You also left a ball of hair in the drain after you.";
+                    }
+                    else
+                    {
+                        hairFeedback = "However, you left a ball of hair in the drain after you.";
+                    }
+
+                    madeAnyMistakes = true;
+                }
+                else
+                {
+                    hairFeedback = "Thank you for picking up your hair from the drain as well.";
+                }
+            }
+            else
+            {
+                Reply("You took a shower and you left a huge puddle of water all over the floor. Please use the mop and clean after yourself next time.");
+                madeAnyMistakes = true;
+
+                // Did you get the hair?
+                if (ThingAt(Thing.Hair, Location.NorthWingBathroom))
+                {
+                    hairFeedback = "You also left a ball of hair in the drain after you.";
+                }
+                else
+                {
+                    hairFeedback = "Thank you for picking up your hair from the drain as well.";
+                }
+            }
+
+            // Add additional scolding if you left the hair.
+            if (ThingAt(Thing.Hair, Location.NorthWingBathroom))
+            {
+                hairFeedback += " Try to be mindful of the homies coming to shower after you and don't leave hairy souvenirs for them.";
+            }
+            else
+            {
+                // Is the hair still in your hands?
+                if (HaveThing(Thing.Hair))
+                {
+                    hairFeedback += " However, you were a bit gross running around with it in your hands all day.";
+                    madeAnyMistakes = true;
+                }
+                // Did you drop it somwhere else?
+                else if (!ThingAt(Thing.Hair, Location.Nowhere))
+                {
+                    hairFeedback += "However, throwing it somewhere else is not a nice thing to do. Next time dispose of it in the trash.";
+                    madeAnyMistakes = true;
+                }
+            }
+
+            Reply(hairFeedback);
+
+            Console.ReadKey();
+
+            // Judge the dinner situation.
+            var dinnerFeedback = "We hope the meatballs were delicious.";
+
+            if (ThingAt(Thing.DirtyPlate, Location.Nowhere))
+            {
+                dinnerFeedback += " Thank you for rinsing the plate after you";
+
+                if (ThingAt(Thing.RinsedPlate, Location.Scullery))
+                {
+                    dinnerFeedback += " and leaving it by the dishwasher to get it super clean. Great job!";
+                }
+                else
+                {
+                    dinnerFeedback += ". Next time also leave it by the dishwasher so it gets thoroughly cleaned as well.";
+                    madeAnyMistakes = true;
+                }
+            }
+            else
+            {
+                dinnerFeedback += " It would be nice, however, if you rinsed the dirty plate";
+                madeAnyMistakes = true;
+
+                // Did you at least leave it in the scullery?
+                if (ThingAt(Thing.DirtyPlate, Location.Scullery))
+                {
+                    dinnerFeedback += ". It's nice that you dropped it off at the dishwasher, but if thick layers of food are left on it, they sometimes don't get cleaned. Remember, nobody would like to eat your leftovers!";
+                }
+                else
+                {
+                    dinnerFeedback += " and placed it next to the dishwasher.";
+                }
+            }
+
+            Reply(dinnerFeedback);
+
+            Console.ReadKey();
+
+            if (madeAnyMistakes)
+            {
+                Reply("We hope you've learned something today. It's not always easy to live in a house full of other people, but we can make it very enjoyable if we all take care of the place and keep things in the same condition as we found them.");
+            }
+            else
+            {
+                Reply("You've shown that you can get things done and be mindful of your fellow homies at the same time. You are a shining example of how to behave in a coliving environment. Have a wonderful night!");
+            }
+
+            Console.ReadKey();
+
+            ShouldQuit = true;
         }
 
         #endregion

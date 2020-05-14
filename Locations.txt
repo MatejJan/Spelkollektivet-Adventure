@@ -31,6 +31,20 @@ Name: Dining room
 Description: Rows of tables fill most of the dining room, a necessity to accomodate the 30+ game developers who live here. You may continue to the dishwashing room to the west or return to the Lobby.
 Directions:
     East: Lobby
+    West: Scullery
+
+Scullery
+Name: Scullery
+Description: You are in a small room with a big industrial dishwasher. Plates can be rinsed with water and left here for machine washing.
+Directions:
+    South: HomiesKitchen
+    East: DiningRoom
+
+HomiesKitchen
+Name: Homies' kitchen
+Description: The small kitchen at the end of the west wing is being used by the homies to occasinally prepare their own meals. Mostly it's used to make coffee or bake bread in the oven for breakfast though. Everyone's food is stored here on shelves, in the refrigirator, or the freezer.
+Directions:
+    North: Scullery
 
 NorthWingEntrance
 Name: North wing entrance
@@ -75,7 +89,7 @@ Directions:
     North: SouthWingEntrance
 
 BasementLobby
-Name: Basement lobby.
+Name: Basement lobby
 Description: You enter a sizeable room without any windows. A few couches serve as a makeshift hangout space, although nobody is actually hanging out. You hear distant memories of ping pong balls echoing in the air.
 Directions:
     South: LoudOffice

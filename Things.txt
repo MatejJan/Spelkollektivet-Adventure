@@ -8,10 +8,20 @@ Name: James
 Description: It's James Newnorth, the founder of Spelkollektivet.
 StartingLocation: Lobby
 
-Plate
+CleanPlate
 Name: plate
 Description: It's one of the fine Ikea plates used during meals. For some reason they keep disappearing.
 StartingLocation: DiningRoom
+
+DirtyPlate
+Name: dirty plate
+Description: A monstrosity of meatballs sause decorates the plate, alongisde other sticky parts.
+StartingLocation: Nowhere
+
+RinsedPlate
+Name: rinsed plate
+Description: The plate is nicely rinsed and ready to be dishwashed.
+StartingLocation: Nowhere
 
 Computer
 Name: computer
@@ -62,3 +72,8 @@ TrashBin
 Name: trash bin
 Description: It's a small trash bin, good for disposing of hairballs.
 StartingLocation: NorthWingBathroom
+
+Meatballs
+Name: meatballs
+Description: Every friday evening, swedish meatballs are served as a tradition. The origin meat is often rummored to be the remains of homies who try to leave this place. Bon appetit! 
+StartingLocation: DiningRoom
