@@ -15,7 +15,7 @@ StartingLocation: DiningRoom
 
 DirtyPlate
 Name: dirty plate
-Description: A monstrosity of meatballs sause decorates the plate, alongisde other sticky parts.
+Description: A monstrosity of meatballs sauce decorates the plate, alongside other sticky parts.
 StartingLocation: Nowhere
 
 RinsedPlate

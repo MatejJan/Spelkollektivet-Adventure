@@ -11,7 +11,7 @@ namespace SpelkollektivetAdventure
 
     // Enumerations
 
-    enum Location
+    enum LocationId
     {
         Nowhere,
         Inventory,
@@ -32,7 +32,7 @@ namespace SpelkollektivetAdventure
         HomiesKitchen
     }
 
-    enum Thing
+    enum ThingId
     {
         None,
         All,
@@ -80,27 +80,27 @@ namespace SpelkollektivetAdventure
 
     class LocationData
     {
-        public Location ID;
+        public LocationId Id;
         public string Name;
         public string Description;
-        public Dictionary<Direction, Location> Directions;
+        public Dictionary<Direction, LocationId> Directions;
     }
 
     class ThingData
     {
-        public Thing ID;
+        public ThingId Id;
         public string Name;
         public string Description;
-        public Location StartingLocation;
+        public LocationId StartingLocationId;
     }
 
     class ParsedData
     {
-        public string ID;
+        public string Id;
         public string Name;
         public string Description;
-        public Dictionary<Direction, Location> Directions;
-        public Location StartingLocation;
+        public Dictionary<Direction, LocationId> Directions;
+        public LocationId StartingLocationId;
     }
 
     #endregion
@@ -111,33 +111,33 @@ namespace SpelkollektivetAdventure
 
         // Data dictionaries
 
-        static Dictionary<Location, LocationData> LocationsData = new Dictionary<Location, LocationData>();
-        static Dictionary<Thing, ThingData> ThingsData = new Dictionary<Thing, ThingData>();
+        static Dictionary<LocationId, LocationData> LocationsData = new Dictionary<LocationId, LocationData>();
+        static Dictionary<ThingId, ThingData> ThingsData = new Dictionary<ThingId, ThingData>();
 
-        // Vocabulary helpers
+        // Thing helpers
 
-        static Dictionary<string, Thing> ThingsByName = new Dictionary<string, Thing>();
-        static Thing[] ThingsYouCanTalkTo = { Thing.James };
-        static Thing[] ThingsYouCanGet = { Thing.Suitcase, Thing.CleanPlate, Thing.DirtyPlate, Thing.RinsedPlate, Thing.Computer, Thing.Mop, Thing.Hair, Thing.Meatballs };
-        static Thing[] ThingsYouCanRead = { Thing.Checklist, Thing.BathroomSign };
-        static Thing[] Plates = { Thing.DirtyPlate, Thing.CleanPlate, Thing.RinsedPlate };
+        static Dictionary<string, ThingId> ThingIdsByName = new Dictionary<string, ThingId>();
+        static ThingId[] ThingsYouCanTalkTo = { ThingId.James };
+        static ThingId[] ThingsYouCanGet = { ThingId.Suitcase, ThingId.CleanPlate, ThingId.DirtyPlate, ThingId.RinsedPlate, ThingId.Computer, ThingId.Mop, ThingId.Hair, ThingId.Meatballs };
+        static ThingId[] ThingsYouCanRead = { ThingId.Checklist, ThingId.BathroomSign };
+        static ThingId[] Plates = { ThingId.DirtyPlate, ThingId.CleanPlate, ThingId.RinsedPlate };
 
         // Current state
 
-        static Location CurrentLocation = Location.Entrance;
-        static Dictionary<Thing, Location> ThingLocation = new Dictionary<Thing, Location>();
-        static Dictionary<Location, bool> LocationSeen = new Dictionary<Location, bool>();
+        static LocationId CurrentLocationId = LocationId.Entrance;
+        static Dictionary<ThingId, LocationId> ThingsLocations = new Dictionary<ThingId, LocationId>();
+        static Dictionary<LocationId, bool> LocationSeen = new Dictionary<LocationId, bool>();
         static Dictionary<Goal, bool> GoalCompleted = new Dictionary<Goal, bool>();
         static bool SleepHintGiven = false;
 
-        // Helper variables
+        // Helper variables and constants
 
         static bool ShouldQuit = false;
 
-        static ConsoleColor NarrativeColor = ConsoleColor.Gray;
-        static ConsoleColor PromptColor = ConsoleColor.White;
-        static ConsoleColor SuccessColor = ConsoleColor.DarkGreen;
-        static int PrintPauseMilliseconds = 50;
+        const ConsoleColor NarrativeColor = ConsoleColor.Gray;
+        const ConsoleColor PromptColor = ConsoleColor.White;
+        const ConsoleColor SuccessColor = ConsoleColor.DarkGreen;
+        const int PrintPauseMilliseconds = 50;
 
         #endregion
 
@@ -148,7 +148,7 @@ namespace SpelkollektivetAdventure
             // Initialize everything.
             ReadLocationsData();
             ReadThingsData();
-            InitializeVocabularyHelpers();
+            InitializeThingHelpers();
             InitializeThingsState();
             InitializeSeenLocations();
             InitializeGoals();
@@ -169,8 +169,8 @@ namespace SpelkollektivetAdventure
             // Start the main interaction loop.
             while (!ShouldQuit)
             {
-                PromptPlayer();
-                HandleGameRules();
+                HandlePlayerAction();
+                ApplyGameRules();
             }
         }
 
@@ -184,15 +184,15 @@ namespace SpelkollektivetAdventure
             // Transfer data from the parsed structures into locations data.
             foreach (ParsedData parsedData in parsedDataList)
             {
-                Location location = Enum.Parse<Location>(parsedData.ID);
+                LocationId locationId = Enum.Parse<LocationId>(parsedData.Id);
                 LocationData locationData = new LocationData
                 {
-                    ID = location,
+                    Id = locationId,
                     Name = parsedData.Name,
                     Description = parsedData.Description,
                     Directions = parsedData.Directions
                 };
-                LocationsData[location] = locationData;
+                LocationsData[locationId] = locationData;
             }
         }
 
@@ -204,15 +204,15 @@ namespace SpelkollektivetAdventure
             // Transfer data from the parsed structures into things data.
             foreach (ParsedData parsedData in parsedDataList)
             {
-                Thing thing = Enum.Parse<Thing>(parsedData.ID);
+                ThingId thingId = Enum.Parse<ThingId>(parsedData.Id);
                 ThingData thingData = new ThingData
                 {
-                    ID = thing,
+                    Id = thingId,
                     Name = parsedData.Name,
                     Description = parsedData.Description,
-                    StartingLocation = parsedData.StartingLocation
+                    StartingLocationId = parsedData.StartingLocationId
                 };
-                ThingsData[thing] = thingData;
+                ThingsData[thingId] = thingData;
             }
         }
 
@@ -232,8 +232,8 @@ namespace SpelkollektivetAdventure
                 // Initialize the structure that will hold parsed data.
                 var parsedData = new ParsedData
                 {
-                    ID = id,
-                    Directions = new Dictionary<Direction, Location>()
+                    Id = id,
+                    Directions = new Dictionary<Direction, LocationId>()
                 };
 
                 // The remaining lines hold various properties in "property: value" or "property:" format.
@@ -241,7 +241,7 @@ namespace SpelkollektivetAdventure
 
                 do
                 {
-                    // Extract property and potentialy value.
+                    // Extract property and potentially value.
                     MatchCollection matches = Regex.Matches(dataLines[currentLineIndex], @"(\w+): *(.*)?");
                     if (matches.Count == 0)
                     {
@@ -272,7 +272,7 @@ namespace SpelkollektivetAdventure
 
                                 // Store parsed data into the directions dictionary.
                                 Direction direction = Enum.Parse<Direction>(directionsLineMatches[0].Groups[1].Value);
-                                Location destination = Enum.Parse<Location>(directionsLineMatches[0].Groups[2].Value);
+                                LocationId destination = Enum.Parse<LocationId>(directionsLineMatches[0].Groups[2].Value);
                                 parsedData.Directions[direction] = destination;
 
                                 currentLineIndex++;
@@ -281,7 +281,7 @@ namespace SpelkollektivetAdventure
                             break;
 
                         case "StartingLocation":
-                            parsedData.StartingLocation = Enum.Parse<Location>(value);
+                            parsedData.StartingLocationId = Enum.Parse<LocationId>(value);
                             break;
                     }
 
@@ -298,10 +298,10 @@ namespace SpelkollektivetAdventure
             return parsedDataList;
         }
 
-        static void InitializeVocabularyHelpers()
+        static void InitializeThingHelpers()
         {
             // Create a map of things by their name.
-            foreach (KeyValuePair<Thing, ThingData> thingEntry in ThingsData)
+            foreach (KeyValuePair<ThingId, ThingData> thingEntry in ThingsData)
             {
                 string name = thingEntry.Value.Name.ToLowerInvariant();
 
@@ -311,9 +311,9 @@ namespace SpelkollektivetAdventure
                 foreach (string namePart in nameParts)
                 {
                     // Don't override already assigned words.
-                    if (ThingsByName.ContainsKey(namePart)) continue;
+                    if (ThingIdsByName.ContainsKey(namePart)) continue;
 
-                    ThingsByName[namePart] = thingEntry.Key;
+                    ThingIdsByName[namePart] = thingEntry.Key;
                 }
             }
         }
@@ -321,18 +321,18 @@ namespace SpelkollektivetAdventure
         static void InitializeThingsState()
         {
             // Set all things to their starting locations.
-            foreach (KeyValuePair<Thing, ThingData> thingEntry in ThingsData)
+            foreach (KeyValuePair<ThingId, ThingData> thingEntry in ThingsData)
             {
-                ThingLocation[thingEntry.Key] = thingEntry.Value.StartingLocation;
+                ThingsLocations[thingEntry.Key] = thingEntry.Value.StartingLocationId;
             }
         }
 
         static void InitializeSeenLocations()
         {
             // Set all locations as not visited.
-            foreach (Location location in Enum.GetValues(typeof(Location)))
+            foreach (LocationId locationId in Enum.GetValues(typeof(LocationId)))
             {
-                LocationSeen[location] = false;
+                LocationSeen[locationId] = false;
             }
         }
 
@@ -376,6 +376,15 @@ namespace SpelkollektivetAdventure
         }
 
         /// <summary>
+        /// Responds to player's command with the specified message.
+        /// </summary>
+        static void Reply(string text)
+        {
+            Print(text);
+            Print();
+        }
+
+        /// <summary>
         /// Returns the text with the first letter in uppercase.
         /// </summary>
         static string Capitalize(string text)
@@ -390,59 +399,58 @@ namespace SpelkollektivetAdventure
         /// <summary>
         /// Returns a list of things that are mentioned in the specified words.
         /// </summary>
-        static List<Thing> GetThingsFromWords(string[] words)
+        static List<ThingId> GetThingIdsFromWords(string[] words)
         {
-            List<Thing> things = new List<Thing>();
+            List<ThingId> thingIds = new List<ThingId>();
 
             // For each word, see if it's a name of a thing.
             foreach (string word in words)
             {
-                if (ThingsByName.ContainsKey(word))
+                if (ThingIdsByName.ContainsKey(word))
                 {
-                    things.Add(ThingsByName[word]);
+                    thingIds.Add(ThingIdsByName[word]);
                 }
             }
 
-            return things;
+            return thingIds;
         }
 
         /// <summary>
         /// Returns all things that are at the specified location.
         /// </summary>
-        static IEnumerable<Thing> GetThingsAtLocation(Location location)
+        static IEnumerable<ThingId> GetThingsAtLocation(LocationId locationId)
         {
-            return ThingLocation.Keys.Where(thing => ThingLocation[thing] == location);
+            return ThingsLocations.Keys.Where(thingId => ThingAt(thingId, locationId));
 
             /* Below code kept to show students how much longer an imperative filter code is.
 
             List<Thing> thingsAtLocation = new List<Thing>();
 
-            foreach (KeyValuePair<Thing, Location> thingEntry in ThingLocations)
+            foreach (Thing thing in Enum.GetValues(typeof(Thing)))
             {
-                if (thingEntry.Value == location)
+                if (ThingAt(thing, location))
                 {
-                    thingsAtLocation.Add(thingEntry.Key);
+                    thingsAtLocation.Add(thing);
                 }
             }
 
-            return thingsAtLocation;
-            */
+            return thingsAtLocation;*/
         }
 
         /// <summary>
         /// Returns the name of the specified thing.
         /// </summary>
-        static string GetName(Thing thing)
+        static string GetName(ThingId thingId)
         {
-            return ThingsData[thing].Name;
+            return ThingsData[thingId].Name;
         }
 
         /// <summary>
         /// Returns the names of specified things.
         /// </summary>
-        static IEnumerable<string> GetNames(IEnumerable<Thing> things)
+        static IEnumerable<string> GetNames(IEnumerable<ThingId> thingIds)
         {
-            return things.Select(thing => ThingsData[thing].Name);
+            return thingIds.Select(thingId => ThingsData[thingId].Name);
 
             /* Below code kept to show students how much longer an imperative map code is.
               
@@ -471,7 +479,7 @@ namespace SpelkollektivetAdventure
 
         #region Interaction
 
-        static void PromptPlayer()
+        static void HandlePlayerAction()
         {
             // Ask the player what they want to do.
             Print("What now?");
@@ -497,7 +505,7 @@ namespace SpelkollektivetAdventure
             string verb = words[0];
 
             // Some commands are performed with things so see if any are being mentioned.
-            List<Thing> things = GetThingsFromWords(words);
+            List<ThingId> thingIds = GetThingIdsFromWords(words);
 
             // Call the appropriate handler for the given verb.
             switch (verb)
@@ -558,28 +566,28 @@ namespace SpelkollektivetAdventure
 
                 case "l":
                 case "look":
-                    HandleLook(words, things);
+                    HandleLook(words, thingIds);
                     break;
 
                 case "read":
-                    HandleRead(words, things);
+                    HandleRead(words, thingIds);
                     break;
 
                 case "talk":
-                    HandleTalk(words, things);
+                    HandleTalk(words, thingIds);
                     break;
 
                 case "get":
                 case "pick":
                 case "take":
-                    HandleGet(words, things);
+                    HandleGet(words, thingIds);
                     break;
 
                 case "drop":
                 case "set":
                 case "place":
                 case "throw":
-                    HandleDrop(words, things);
+                    HandleDrop(words, thingIds);
                     break;
 
                 case "i":
@@ -588,7 +596,7 @@ namespace SpelkollektivetAdventure
                     break;
 
                 case "open":
-                    HandleOpen(words, things);
+                    HandleOpen(words, thingIds);
                     break;
 
                 case "shower":
@@ -596,7 +604,7 @@ namespace SpelkollektivetAdventure
                     break;
 
                 case "clean":
-                    HandleClean(words, things);
+                    HandleClean(words, thingIds);
                     break;
 
                 case "mop":
@@ -604,15 +612,15 @@ namespace SpelkollektivetAdventure
                     break;
 
                 case "eat":
-                    HandleEat(words, things);
+                    HandleEat(words, thingIds);
                     break;
 
                 case "sleep":
-                    Sleep();
+                    HandleSleep();
                     break;
 
                 case "rinse":
-                    HandleRinse(words, things);
+                    HandleRinse(words, thingIds);
                     break;
 
                 // Special commands
@@ -639,7 +647,7 @@ namespace SpelkollektivetAdventure
         static void HandleMovement(Direction direction)
         {
             // See if the current location has the desired direction.
-            LocationData currentLocationData = LocationsData[CurrentLocation];
+            LocationData currentLocationData = LocationsData[CurrentLocationId];
 
             if (!currentLocationData.Directions.ContainsKey(direction))
             {
@@ -648,13 +656,13 @@ namespace SpelkollektivetAdventure
             }
 
             // Move the player to that location.
-            CurrentLocation = currentLocationData.Directions[direction];
+            CurrentLocationId = currentLocationData.Directions[direction];
 
             // Display the new location's description.
             DisplayLocation(false);
         }
 
-        static void HandleLook(string[] words, List<Thing> things)
+        static void HandleLook(string[] words, List<ThingId> thingIds)
         {
             if (words.Length == 1)
             {
@@ -664,27 +672,27 @@ namespace SpelkollektivetAdventure
             }
 
             // We're trying to look at things. See if any were mentioned.
-            if (things.Count == 0)
+            if (thingIds.Count == 0)
             {
                 Reply("I don't see it.");
                 return;
             }
 
             // Display descriptions of all mentioned things.
-            foreach (Thing thing in things)
+            foreach (ThingId thingId in thingIds)
             {
                 // Make sure the thing is present.
-                if (!ThingAvailable(thing))
+                if (!ThingAvailable(thingId))
                 {
-                    Reply($"{Capitalize(GetName(thing))} is not here.");
+                    Reply($"{Capitalize(GetName(thingId))} is not here.");
                     continue;
                 }
 
-                DisplayThing(thing);
+                DisplayThing(thingId);
             }
         }
 
-        static void HandleRead(string[] words, List<Thing> things)
+        static void HandleRead(string[] words, List<ThingId> thingIds)
         {
             // Handle edge cases.
             if (words.Length == 1)
@@ -694,27 +702,27 @@ namespace SpelkollektivetAdventure
             }
 
             // Make sure we understood what to get.
-            if (things.Count == 0)
+            if (thingIds.Count == 0)
             {
                 Reply("I don't know which thing you want to read.");
                 return;
             }
 
             // Display descriptions of all mentioned things.
-            foreach (Thing thing in things)
+            foreach (ThingId thingId in thingIds)
             {
                 // Make sure the thing can be read.
-                if (!ThingsYouCanRead.Contains(thing))
+                if (!ThingsYouCanRead.Contains(thingId))
                 {
-                    Reply($"{Capitalize(GetName(thing))} can't be read.");
+                    Reply($"{Capitalize(GetName(thingId))} can't be read.");
                     continue;
                 }
 
-                DisplayThing(thing);
+                DisplayThing(thingId);
             }
         }
 
-        static void HandleTalk(string[] words, List<Thing> things)
+        static void HandleTalk(string[] words, List<ThingId> thingIds)
         {
             // Handle edge cases.
             if (words.Length == 1)
@@ -723,39 +731,39 @@ namespace SpelkollektivetAdventure
                 return;
             }
 
-            if (things.Count == 0)
+            if (thingIds.Count == 0)
             {
                 Reply("I don't know who you mean.");
                 return;
             }
 
             // Only consider the first thing mentioned.
-            Thing thing = things[0];
+            ThingId thingId = thingIds[0];
 
-            // Make sure the thing can be talked to.
-            if (!ThingsYouCanTalkTo.Contains(thing))
+            // Make sure the thing is an NPC that can be talked to.
+            if (!ThingsYouCanTalkTo.Contains(thingId))
             {
                 Reply("You can't talk to that.");
                 return;
             }
 
-            // Make sure the thing is present.
-            if (!ThingIsHere(thing))
+            // Make sure the NPC is present.
+            if (!ThingIsHere(thingId))
             {
-                Reply($"{Capitalize(GetName(thing))} is not here.");
+                Reply($"{Capitalize(GetName(thingId))} is not here.");
                 return;
             }
 
-            // Everything seems to be OK, proceed to the talk event with the specific person.
-            switch (thing)
+            // Everything seems to be OK, proceed to the talk event with the specific NPC.
+            switch (thingId)
             {
-                case Thing.James:
+                case ThingId.James:
                     TalkToJames();
                     break;
             }
         }
 
-        static void HandleGet(string[] words, List<Thing> things)
+        static void HandleGet(string[] words, List<ThingId> thingIds)
         {
             // Handle edge cases.
             if (words.Length == 1)
@@ -767,10 +775,10 @@ namespace SpelkollektivetAdventure
             // See if we want to get everything.
             if (WordsIncludeEverythingSynonyms(words))
             {
-                IEnumerable<Thing> thingsAtLocation = GetThingsAtLocation(CurrentLocation);
+                IEnumerable<ThingId> thingsAtLocation = GetThingsAtLocation(CurrentLocationId);
 
                 // Find the things we can actually get.
-                IEnumerable<Thing> availableThingsToGet = ThingsYouCanGet.Intersect(thingsAtLocation);
+                IEnumerable<ThingId> availableThingsToGet = ThingsYouCanGet.Intersect(thingsAtLocation);
 
                 if (availableThingsToGet.Count() == 0)
                 {
@@ -778,28 +786,28 @@ namespace SpelkollektivetAdventure
                     return;
                 }
 
-                things = new List<Thing>(availableThingsToGet);
+                thingIds = new List<ThingId>(availableThingsToGet);
             }
 
             // Make sure we understood what to get.
-            if (things.Count == 0)
+            if (thingIds.Count == 0)
             {
                 Reply("I don't know which thing you want to get.");
                 return;
             }
 
             // Try to get all mentioned things.
-            List<Thing> thingsPickedUp = new List<Thing>();
+            List<ThingId> thingsPickedUp = new List<ThingId>();
 
-            foreach (Thing thing in things)
+            foreach (ThingId thingId in thingIds)
             {
-                string thingName = Capitalize(GetName(thing));
+                string thingName = Capitalize(GetName(thingId));
 
                 // Make sure the thing can be picked up.
-                if (!ThingsYouCanGet.Contains(thing))
+                if (!ThingsYouCanGet.Contains(thingId))
                 {
                     // Shower is a special case of things you can 'take' (as a manner of speech).
-                    if (thing == Thing.Shower)
+                    if (thingId == ThingId.Shower)
                     {
                         TakeShower();
                         continue;
@@ -810,29 +818,29 @@ namespace SpelkollektivetAdventure
                 }
 
                 // Check if you already have the thing.
-                if (HaveThing(thing))
+                if (HaveThing(thingId))
                 {
                     Reply($"{thingName} is already in your possession.");
                     continue;
                 }
 
                 // Make sure the thing is at this location.
-                if (!ThingIsHere(thing))
+                if (!ThingIsHere(thingId))
                 {
                     Reply($"{thingName} is not here.");
                     continue;
                 }
 
                 // Everything seems to be OK, take the thing.
-                bool pickedUp = GetThing(thing);
-                if (pickedUp) thingsPickedUp.Add(thing);
+                bool pickedUp = GetThing(thingId);
+                if (pickedUp) thingsPickedUp.Add(thingId);
             }
 
             // If nothing was picked up, we let the error messages speak for themselves.
             if (thingsPickedUp.Count == 0) return;
 
             // If everything was picked up, we simply confirm the command.
-            if (thingsPickedUp.Count == things.Count)
+            if (thingsPickedUp.Count == thingIds.Count)
             {
                 Reply("OK.");
                 return;
@@ -842,7 +850,7 @@ namespace SpelkollektivetAdventure
             Reply($"You picked up {string.Join(", ", GetNames(thingsPickedUp))}.");
         }
 
-        static void HandleDrop(string[] words, List<Thing> things)
+        static void HandleDrop(string[] words, List<ThingId> thingIds)
         {
             // Handle edge cases.
             if (words.Length == 1)
@@ -852,9 +860,9 @@ namespace SpelkollektivetAdventure
             }
 
             // When trash is mantioned, we assume we're dropping things into it.
-            if (things.Contains(Thing.TrashBin))
+            if (thingIds.Contains(ThingId.TrashBin))
             {
-                ThrowInTrash(things.Where(thing => thing != Thing.TrashBin));
+                ThrowInTrash(thingIds.Where(thing => thing != ThingId.TrashBin));
                 return;
             }
 
@@ -862,7 +870,7 @@ namespace SpelkollektivetAdventure
             if (WordsIncludeEverythingSynonyms(words))
             {
                 // See if we have any things to drop.
-                IEnumerable<Thing> thingsInInventory = GetThingsAtLocation(Location.Inventory);
+                IEnumerable<ThingId> thingsInInventory = GetThingsAtLocation(LocationId.Inventory);
 
                 if (thingsInInventory.Count() == 0)
                 {
@@ -870,7 +878,7 @@ namespace SpelkollektivetAdventure
                     return;
                 }
 
-                IEnumerable<Thing> thingsYouCanDrop = thingsInInventory.Intersect(ThingsYouCanGet);
+                IEnumerable<ThingId> thingsYouCanDrop = thingsInInventory.Intersect(ThingsYouCanGet);
 
                 if (thingsYouCanDrop.Count() == 0)
                 {
@@ -878,38 +886,38 @@ namespace SpelkollektivetAdventure
                     return;
                 }
 
-                things = new List<Thing>(thingsYouCanDrop);
+                thingIds = new List<ThingId>(thingsYouCanDrop);
             }
 
             // Make sure we understood what to drop.
-            if (things.Count == 0)
+            if (thingIds.Count == 0)
             {
                 Reply("I don't know which thing you want to drop.");
                 return;
             }
 
             // Try to drop all the mentioned things.
-            List<Thing> thingsDropped = new List<Thing>();
+            List<ThingId> thingsDropped = new List<ThingId>();
 
-            foreach (Thing thing in things)
+            foreach (ThingId thingId in thingIds)
             {
                 // Make sure you have the thing.
-                if (!HaveThing(thing))
+                if (!HaveThing(thingId))
                 {
-                    Reply($"{Capitalize(GetName(thing))} is not in your inventory.");
+                    Reply($"{Capitalize(GetName(thingId))} is not in your inventory.");
                     continue;
                 }
 
                 // Everything seems to be OK, drop the item.
-                bool dropped = DropThing(thing);
-                if (dropped) thingsDropped.Add(thing);
+                bool dropped = DropThing(thingId);
+                if (dropped) thingsDropped.Add(thingId);
             }
 
             // If nothing was dropped, we let the error messages speak for themselves.
             if (thingsDropped.Count == 0) return;
 
             // If everything was dropped, we simply confirm the command.
-            if (thingsDropped.Count == things.Count)
+            if (thingsDropped.Count == thingIds.Count)
             {
                 Reply("OK.");
                 return;
@@ -919,7 +927,7 @@ namespace SpelkollektivetAdventure
             Reply($"You dropped {string.Join(", ", GetNames(thingsDropped))}.");
         }
 
-        static void HandleOpen(string[] words, List<Thing> things)
+        static void HandleOpen(string[] words, List<ThingId> thingIds)
         {
             // Handle edge cases.
             if (words.Length == 1)
@@ -928,19 +936,19 @@ namespace SpelkollektivetAdventure
                 return;
             }
 
-            if (things.Count == 0)
+            if (thingIds.Count == 0)
             {
                 Reply("I don't know which thing you want to open.");
                 return;
             }
 
-            if (things.Contains(Thing.Suitcase))
+            if (thingIds.Contains(ThingId.Suitcase))
             {
                 OpenSuitcase();
             }
         }
 
-        static void HandleClean(string[] words, List<Thing> things)
+        static void HandleClean(string[] words, List<ThingId> thingIds)
         {
             // Handle edge cases.
             if (words.Length == 1)
@@ -949,21 +957,21 @@ namespace SpelkollektivetAdventure
                 return;
             }
 
-            if (things.Count == 0)
+            if (thingIds.Count == 0)
             {
                 Reply("I don't know which thing you want to clean.");
                 return;
             }
 
-            if (things.Contains(Thing.Puddle))
+            if (thingIds.Contains(ThingId.Puddle))
             {
                 MopPuddle();
             }
-            else if (things.Contains(Thing.Hair))
+            else if (thingIds.Contains(ThingId.Hair))
             {
                 Reply("You should pick it up and throw it in the trash.");
             }
-            else if (things.Intersect(Plates).Count() > 0)
+            else if (thingIds.Intersect(Plates).Count() > 0)
             {
                 RinsePlate();
             }
@@ -973,7 +981,7 @@ namespace SpelkollektivetAdventure
             }
         }
 
-        static void HandleEat(string[] words, List<Thing> things)
+        static void HandleEat(string[] words, List<ThingId> thingIds)
         {
             // Handle edge cases.
             if (words.Length == 1)
@@ -982,13 +990,13 @@ namespace SpelkollektivetAdventure
                 return;
             }
 
-            if (things.Count == 0)
+            if (thingIds.Count == 0)
             {
                 Reply("I don't know which thing you want to eat.");
                 return;
             }
 
-            if (things.Contains(Thing.Meatballs))
+            if (thingIds.Contains(ThingId.Meatballs))
             {
                 Eat();
             }
@@ -998,7 +1006,7 @@ namespace SpelkollektivetAdventure
             }
         }
 
-        static void HandleRinse(string[] words, List<Thing> things)
+        static void HandleRinse(string[] words, List<ThingId> thingIds)
         {
             // Handle edge cases.
             if (words.Length == 1)
@@ -1007,7 +1015,7 @@ namespace SpelkollektivetAdventure
                 return;
             }
 
-            if (things.Intersect(Plates).Count() > 0)
+            if (thingIds.Intersect(Plates).Count() > 0)
             {
                 RinsePlate();
             }
@@ -1019,7 +1027,7 @@ namespace SpelkollektivetAdventure
 
         #endregion
 
-        #region Display methods
+        #region Display helpers
 
         /// <summary>
         /// Displays everything the player needs to know about the location.
@@ -1027,12 +1035,12 @@ namespace SpelkollektivetAdventure
         static void DisplayLocation(bool forceShowDescription)
         {
             // Display current location description.
-            LocationData currentLocationData = LocationsData[CurrentLocation];
+            LocationData currentLocationData = LocationsData[CurrentLocationId];
 
             Console.Clear();
 
             // If we've already visited this location, show just the name, unless we explicitely asked for the description.
-            if (LocationSeen[CurrentLocation] && !forceShowDescription)
+            if (LocationSeen[CurrentLocationId] && !forceShowDescription)
             {
                 Print($"{currentLocationData.Name}.");
             }
@@ -1041,7 +1049,7 @@ namespace SpelkollektivetAdventure
                 Print(currentLocationData.Description);
 
                 // Mark that we've seen this location's description.
-                LocationSeen[CurrentLocation] = true;
+                LocationSeen[CurrentLocationId] = true;
             }
 
             Print();
@@ -1049,7 +1057,7 @@ namespace SpelkollektivetAdventure
             // Display possible directions.
             String directionsDescription = "Possible exits are:";
 
-            foreach (KeyValuePair<Direction, Location> directionEntry in currentLocationData.Directions)
+            foreach (KeyValuePair<Direction, LocationId> directionEntry in currentLocationData.Directions)
             {
                 string directionName = directionEntry.Key.ToString().ToLowerInvariant();
                 directionsDescription += $" {directionName}";
@@ -1060,26 +1068,27 @@ namespace SpelkollektivetAdventure
             // Display things that are at the location.
             Print("You see:");
 
-            IEnumerable<Thing> thingsAtCurrentLocation = GetThingsAtLocation(CurrentLocation);
+            IEnumerable<ThingId> thingsAtCurrentLocation = GetThingsAtLocation(CurrentLocationId);
 
             if (thingsAtCurrentLocation.Count() == 0)
             {
                 Print("    nothing.");
             }
-            foreach (Thing thing in thingsAtCurrentLocation)
+            foreach (ThingId thingId in thingsAtCurrentLocation)
             {
-                Print($"    {GetName(thing)}.");
+                Print($"    {GetName(thingId)}.");
             }
+
             Print();
         }
 
         /// <summary>
         /// Displays the specified thing's description.
         /// </summary>
-        static void DisplayThing(Thing thing)
+        static void DisplayThing(ThingId thing)
         {
             // Checklist requires special handling.
-            if (thing == Thing.Checklist)
+            if (thing == ThingId.Checklist)
             {
                 DisplayChecklist();
                 return;
@@ -1130,7 +1139,7 @@ namespace SpelkollektivetAdventure
         {
             Print("You are carrying:");
 
-            IEnumerable<Thing> thingsInInventory = GetThingsAtLocation(Location.Inventory);
+            IEnumerable<ThingId> thingsInInventory = GetThingsAtLocation(LocationId.Inventory);
 
             if (thingsInInventory.Count() == 0)
             {
@@ -1138,9 +1147,9 @@ namespace SpelkollektivetAdventure
             }
             else
             {
-                foreach (Thing thing in thingsInInventory)
+                foreach (ThingId thingId in thingsInInventory)
                 {
-                    Print($"    {GetName(thing)}.");
+                    Print($"    {GetName(thingId)}.");
                 }
             }
 
@@ -1156,52 +1165,44 @@ namespace SpelkollektivetAdventure
         /// <summary>
         /// Tells if the thing is at the specified location.
         /// </summary>
-        static bool ThingAt(Thing thing, Location location)
+        static bool ThingAt(ThingId thingId, LocationId locationId)
         {
-            return ThingLocation[thing] == location;
+            if (!ThingsLocations.ContainsKey(thingId)) return false;
+            return ThingsLocations[thingId] == locationId;
         }
 
         /// <summary>
         /// Tells if the thing is at the current location.
         /// </summary>
-        static bool ThingIsHere(Thing thing)
+        static bool ThingIsHere(ThingId thingId)
         {
-            return ThingAt(thing, CurrentLocation);
+            return ThingAt(thingId, CurrentLocationId);
         }
 
         /// <summary>
-        /// Tells if the things is either at the current location or in the inventory.
+        /// Tells if the thing is either at the current location or in the inventory.
         /// </summary>
-        static bool ThingAvailable(Thing thing)
+        static bool ThingAvailable(ThingId thingId)
         {
-            return ThingIsHere(thing) || HaveThing(thing);
+            return ThingIsHere(thingId) || HaveThing(thingId);
         }
 
         /// <summary>
         /// Tells if the thing is in the inventory.
         /// </summary>
-        static bool HaveThing(Thing thing)
+        static bool HaveThing(ThingId thing)
         {
-            return ThingLocation[thing] == Location.Inventory;
+            return ThingAt(thing, LocationId.Inventory);
         }
 
         // Action helpers
 
         /// <summary>
-        /// Responds to player's command with the specified message.
-        /// </summary>
-        static void Reply(string message)
-        {
-            Print(message);
-            Print();
-        }
-
-        /// <summary>
         /// Moves thing to desired location.
         /// </summary>
-        static void MoveThing(Thing thing, Location location)
+        static void MoveThing(ThingId thingId, LocationId locationId)
         {
-            ThingLocation[thing] = location;
+            ThingsLocations[thingId] = locationId;
         }
 
         /// <summary>
@@ -1209,51 +1210,51 @@ namespace SpelkollektivetAdventure
         /// </summary>
         /// <param name="thing"></param>
         /// <param name="thing"></param>
-        static void SwapThings(Thing thing1, Thing thing2)
+        static void SwapThings(ThingId thing1Id, ThingId thing2Id)
         {
-            Location location1 = ThingLocation[thing1];
-            Location location2 = ThingLocation[thing2];
+            LocationId location1Id = ThingsLocations[thing1Id];
+            LocationId location2Id = ThingsLocations[thing2Id];
 
-            MoveThing(thing1, location2);
-            MoveThing(thing2, location1);
+            MoveThing(thing1Id, location2Id);
+            MoveThing(thing2Id, location1Id);
         }
 
         /// <summary>
         /// Places the thing into the inventory.
         /// </summary>
-        static bool GetThing(Thing thing)
+        static bool GetThing(ThingId thingId)
         {
             // Meatballs can't be taken without a plate.
-            if (thing == Thing.Meatballs && !(HaveThing(Thing.CleanPlate) || HaveThing(Thing.DirtyPlate)))
+            if (thingId == ThingId.Meatballs && !(HaveThing(ThingId.CleanPlate) || HaveThing(ThingId.DirtyPlate)))
             {
                 Reply("You should get a plate first.");
                 return false;
             }
 
-            MoveThing(thing, Location.Inventory);
+            MoveThing(thingId, LocationId.Inventory);
             return true;
         }
 
         /// <summary>
         /// Places the thing to the current location.
         /// </summary>
-        static bool DropThing(Thing thing)
+        static bool DropThing(ThingId thing)
         {
             // Meatballs shouldn't be dropped.
-            if (thing == Thing.Meatballs)
+            if (thing == ThingId.Meatballs)
             {
                 Reply("You shouldn't be throwing food away!");
                 return false;
             }
 
             // Plate while having meatballs shouldn't be dropped.
-            if (Plates.Contains(thing) && HaveThing(Thing.Meatballs))
+            if (Plates.Contains(thing) && HaveThing(ThingId.Meatballs))
             {
                 Reply("You still have meatballs to eat!");
                 return false;
             }
 
-            MoveThing(thing, CurrentLocation);
+            MoveThing(thing, CurrentLocationId);
             return true;
         }
 
@@ -1263,13 +1264,14 @@ namespace SpelkollektivetAdventure
 
         static void TalkToJames()
         {
-            if (ThingAt(Thing.James, Location.Lobby))
+            // You can only talk to James while he's in the lobby.
+            if (ThingAt(ThingId.James, LocationId.Lobby))
             {
                 Reply("James says \"Welcome to Spelkollektivet! You'll first want to get settled in. Your room is on the west side of the north wing.\"");
                 Reply("James points to the east where the north wing starts. He adds \"If you have any questions, I'll be in the reception.\"");
                 Reply("James leaves southeast.");
 
-                MoveThing(Thing.James, Location.Reception);
+                MoveThing(ThingId.James, LocationId.Reception);
             }
             else
             {
@@ -1279,15 +1281,15 @@ namespace SpelkollektivetAdventure
 
         static void OpenSuitcase()
         {
-            // Make sure you have a suitcase.
-            if (!ThingAvailable(Thing.Suitcase))
+            // Make sure you have the suitcase.
+            if (!ThingAvailable(ThingId.Suitcase))
             {
                 Reply("Hmm … Where did you put your suitcase?");
                 return;
             }
 
-            // Place the computer at suitcase's location.
-            MoveThing(Thing.Computer, ThingLocation[Thing.Suitcase]);
+            // Place the computer at the suitcase's location.
+            MoveThing(ThingId.Computer, ThingsLocations[ThingId.Suitcase]);
 
             Reply("You open the suitcase and see your computer in it.");
         }
@@ -1295,18 +1297,18 @@ namespace SpelkollektivetAdventure
         static void TakeShower()
         {
             // You can only take a shower if it's there.
-            if (!ThingIsHere(Thing.Shower))
+            if (!ThingIsHere(ThingId.Shower))
             {
                 Reply("I don't see a shower here. Maybe try a bathroom?");
                 return;
             }
 
             // You shouldn't shower with certain items present.
-            foreach (Thing thing in new[] { Thing.Suitcase, Thing.Computer })
+            foreach (ThingId thingId in new[] { ThingId.Suitcase, ThingId.Computer })
             {
-                if (ThingAvailable(thing))
+                if (ThingAvailable(thingId))
                 {
-                    Reply($"You shouldn't shower with your {GetName(thing)} around.");
+                    Reply($"You shouldn't shower with your {GetName(thingId)} around.");
                     return;
                 }
             }
@@ -1315,8 +1317,8 @@ namespace SpelkollektivetAdventure
             Reply("After you're done, there's water all over the floor. You also left a souvenier of hair in the drain.");
 
             // Add things to clean to the location.
-            DropThing(Thing.Hair);
-            DropThing(Thing.Puddle);
+            DropThing(ThingId.Hair);
+            DropThing(ThingId.Puddle);
 
             // Goal of showering is completed.
             GoalCompleted[Goal.ShowerTaken] = true;
@@ -1325,14 +1327,14 @@ namespace SpelkollektivetAdventure
         static void MopPuddle()
         {
             // Make sure we're next to a puddle.
-            if (!ThingIsHere(Thing.Puddle))
+            if (!ThingIsHere(ThingId.Puddle))
             {
                 Reply("There aren't any puddles of water here.");
                 return;
             }
 
             // We need the mop to mop the puddle.
-            if (!HaveThing(Thing.Mop))
+            if (!HaveThing(ThingId.Mop))
             {
                 Reply("Try grabbing a mop first.");
                 return;
@@ -1341,44 +1343,44 @@ namespace SpelkollektivetAdventure
             Reply("You grip the mop firmly and drag it tightly across the floor towards the drain.");
             Reply("The floor is now dry and you feel good about yourself.");
 
-            MoveThing(Thing.Puddle, Location.Nowhere);
+            MoveThing(ThingId.Puddle, LocationId.Nowhere);
         }
 
-        static void ThrowInTrash(IEnumerable<Thing> things)
+        static void ThrowInTrash(IEnumerable<ThingId> thingIds)
         {
             // Make sure we're throwing away something.
-            if (things.Count() == 0)
+            if (thingIds.Count() == 0)
             {
                 Reply("I don't know what you want to throw in the trash.");
                 return;
             }
 
-            foreach (Thing thing in things)
+            foreach (ThingId thingId in thingIds)
             {
                 // Make sure you have the thing.
-                if (!HaveThing(thing))
+                if (!HaveThing(thingId))
                 {
-                    Reply($"{Capitalize(GetName(thing))} is not in your inventory.");
+                    Reply($"{Capitalize(GetName(thingId))} is not in your inventory.");
                     continue;
                 }
 
                 // We can only throw away hair.
-                if (thing != Thing.Hair)
+                if (thingId != ThingId.Hair)
                 {
-                    Reply($"I don't want to throw the {GetName(thing)} away!");
+                    Reply($"I don't want to throw the {GetName(thingId)} away!");
                     continue;
                 }
 
                 Reply("You dispose your hair into the trash bin. Humanity thanks you!");
 
-                MoveThing(Thing.Hair, Location.Nowhere);
+                MoveThing(ThingId.Hair, LocationId.Nowhere);
             }
         }
 
         static void Eat()
         {
             // Make sure we have meatballs.
-            if (!HaveThing(Thing.Meatballs))
+            if (!HaveThing(ThingId.Meatballs))
             {
                 Reply("You don't have anything to eat.");
                 return;
@@ -1386,7 +1388,7 @@ namespace SpelkollektivetAdventure
 
             Reply("You eat the delicious meatballs and are immediately content with the decision of moving into this house. The food will be one of unexpected highlights of living here.");
 
-            MoveThing(Thing.Meatballs, Location.Nowhere);
+            MoveThing(ThingId.Meatballs, LocationId.Nowhere);
 
             GoalCompleted[Goal.DinnerEaten] = true;
         }
@@ -1394,24 +1396,24 @@ namespace SpelkollektivetAdventure
         static void RinsePlate()
         {
             // You have to be in a room with a sink to rinse dishes.
-            if (!new[] { Location.Scullery, Location.HomiesKitchen, Location.NorthWingBathroom }.Contains(CurrentLocation))
+            if (!new[] { LocationId.Scullery, LocationId.HomiesKitchen, LocationId.NorthWingBathroom }.Contains(CurrentLocationId))
             {
                 Reply("There is no sink here.");
                 return;
             }
 
             // See if we have a plate.
-            if (ThingAvailable(Thing.CleanPlate))
+            if (ThingAvailable(ThingId.CleanPlate))
             {
                 Reply("The plate is already clean.");
                 return;
             }
-            else if (ThingAvailable(Thing.RinsedPlate))
+            else if (ThingAvailable(ThingId.RinsedPlate))
             {
                 Reply("The plate is already rinsed.");
                 return;
             }
-            else if (!ThingAvailable(Thing.DirtyPlate))
+            else if (!ThingAvailable(ThingId.DirtyPlate))
             {
                 Reply("You don't have a plate to rinse.");
                 return;
@@ -1420,16 +1422,16 @@ namespace SpelkollektivetAdventure
             Reply("As a good future homie, you rinse the plate so that the dishwasher will have an easier time getting it super clean.");
 
             // The plate is now rinsed.
-            SwapThings(Thing.DirtyPlate, Thing.RinsedPlate);
+            SwapThings(ThingId.DirtyPlate, ThingId.RinsedPlate);
 
             // We also need the word plate to refer to the rinsed plate now.
-            ThingsByName["plate"] = Thing.RinsedPlate;
+            ThingIdsByName["plate"] = ThingId.RinsedPlate;
         }
 
-        static void Sleep()
+        static void HandleSleep()
         {
             // You have to be in your room to sleep.
-            if (CurrentLocation != Location.YourRoom)
+            if (CurrentLocationId != LocationId.YourRoom)
             {
                 Reply("Maybe try sleeping in your room?");
                 return;
@@ -1449,30 +1451,30 @@ namespace SpelkollektivetAdventure
 
         #region Game rules
 
-        static void HandleGameRules()
+        static void ApplyGameRules()
         {
             // Handle goals.
-            GoalCompleted[Goal.SuitcaseInRoom] = ThingAt(Thing.Suitcase, Location.YourRoom);
+            GoalCompleted[Goal.SuitcaseInRoom] = ThingAt(ThingId.Suitcase, LocationId.YourRoom);
 
-            GoalCompleted[Goal.ComputerInOffice] = ThingAt(Thing.Computer, Location.LoudOffice);
+            GoalCompleted[Goal.ComputerInOffice] = ThingAt(ThingId.Computer, LocationId.LoudOffice);
 
             // Dropping your computer in the loud office claims the desk.
-            if (ThingAt(Thing.Computer, Location.LoudOffice) && ThingAt(Thing.EmptyDesk, Location.LoudOffice))
+            if (ThingAt(ThingId.Computer, LocationId.LoudOffice) && ThingAt(ThingId.EmptyDesk, LocationId.LoudOffice))
             {
-                SwapThings(Thing.EmptyDesk, Thing.YourDesk);
+                SwapThings(ThingId.EmptyDesk, ThingId.YourDesk);
 
                 // We also need the word desk to refer to your desk now.
-                ThingsByName["desk"] = Thing.YourDesk;
+                ThingIdsByName["desk"] = ThingId.YourDesk;
             }
 
             // Getting meatballs dirties your plate.
-            if (HaveThing(Thing.Meatballs) && HaveThing(Thing.CleanPlate))
+            if (HaveThing(ThingId.Meatballs) && HaveThing(ThingId.CleanPlate))
             {
                 // The plate is now dirty.
-                SwapThings(Thing.CleanPlate, Thing.DirtyPlate);
+                SwapThings(ThingId.CleanPlate, ThingId.DirtyPlate);
 
                 // We also need the word plate to refer to the dirty plate now.
-                ThingsByName["plate"] = Thing.DirtyPlate;
+                ThingIdsByName["plate"] = ThingId.DirtyPlate;
             }
 
             // When you complete all goals, the game should tell you to go to sleep.
@@ -1500,19 +1502,19 @@ namespace SpelkollektivetAdventure
             string hairFeedback;
 
             // Did you mop the floor?
-            if (ThingAt(Thing.Puddle, Location.Nowhere))
+            if (ThingAt(ThingId.Puddle, LocationId.Nowhere))
             {
                 Reply("You took a shower and you mopped the floor afterwards. Awesome!");
 
                 // Did you return the mop?
-                if (!ThingAt(Thing.Mop, Location.NorthWingBathroom))
+                if (!ThingAt(ThingId.Mop, LocationId.NorthWingBathroom))
                 {
                     Reply("It would be nice if you also left the mop back in the bathroom for other homies to use afterwards.");
                     madeAnyMistakes = true;
                 }
 
                 // Did you get the hair?
-                if (ThingAt(Thing.Hair, Location.NorthWingBathroom))
+                if (ThingAt(ThingId.Hair, LocationId.NorthWingBathroom))
                 {
                     if (madeAnyMistakes)
                     {
@@ -1536,7 +1538,7 @@ namespace SpelkollektivetAdventure
                 madeAnyMistakes = true;
 
                 // Did you get the hair?
-                if (ThingAt(Thing.Hair, Location.NorthWingBathroom))
+                if (ThingAt(ThingId.Hair, LocationId.NorthWingBathroom))
                 {
                     hairFeedback = "You also left a ball of hair in the drain after you.";
                 }
@@ -1547,20 +1549,20 @@ namespace SpelkollektivetAdventure
             }
 
             // Add additional scolding if you left the hair.
-            if (ThingAt(Thing.Hair, Location.NorthWingBathroom))
+            if (ThingAt(ThingId.Hair, LocationId.NorthWingBathroom))
             {
                 hairFeedback += " Try to be mindful of the homies coming to shower after you and don't leave hairy souvenirs for them.";
             }
             else
             {
                 // Is the hair still in your hands?
-                if (HaveThing(Thing.Hair))
+                if (HaveThing(ThingId.Hair))
                 {
                     hairFeedback += " However, you were a bit gross running around with it in your hands all day.";
                     madeAnyMistakes = true;
                 }
                 // Did you drop it somwhere else?
-                else if (!ThingAt(Thing.Hair, Location.Nowhere))
+                else if (!ThingAt(ThingId.Hair, LocationId.Nowhere))
                 {
                     hairFeedback += "However, throwing it somewhere else is not a nice thing to do. Next time dispose of it in the trash.";
                     madeAnyMistakes = true;
@@ -1574,11 +1576,11 @@ namespace SpelkollektivetAdventure
             // Judge the dinner situation.
             var dinnerFeedback = "We hope the meatballs were delicious.";
 
-            if (ThingAt(Thing.DirtyPlate, Location.Nowhere))
+            if (ThingAt(ThingId.DirtyPlate, LocationId.Nowhere))
             {
                 dinnerFeedback += " Thank you for rinsing the plate after you";
 
-                if (ThingAt(Thing.RinsedPlate, Location.Scullery))
+                if (ThingAt(ThingId.RinsedPlate, LocationId.Scullery))
                 {
                     dinnerFeedback += " and leaving it by the dishwasher to get it super clean. Great job!";
                 }
@@ -1594,7 +1596,7 @@ namespace SpelkollektivetAdventure
                 madeAnyMistakes = true;
 
                 // Did you at least leave it in the scullery?
-                if (ThingAt(Thing.DirtyPlate, Location.Scullery))
+                if (ThingAt(ThingId.DirtyPlate, LocationId.Scullery))
                 {
                     dinnerFeedback += ". It's nice that you dropped it off at the dishwasher, but if thick layers of food are left on it, they sometimes don't get cleaned. Remember, nobody would like to eat your leftovers!";
                 }
